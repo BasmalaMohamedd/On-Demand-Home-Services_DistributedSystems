@@ -27,6 +27,7 @@ public class BookingController {
     public BookingController(BookingService bookingService, UserService userService)
     {
         this.bookingService = bookingService;
+        this.userService = userService;
     }
 
     @PostMapping(value = "/create", consumes = "application/json")
