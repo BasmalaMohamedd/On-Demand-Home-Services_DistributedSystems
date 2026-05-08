@@ -58,7 +58,13 @@ public class WalletService {
 
     public Integer getWalletBalance(Long userId)
     {
-        return repo.findByUserId(userId).orElse(null).getBalance();
+        Wallet w = repo.findByUserId(userId).orElse(null);
+        if(w != null)
+        {
+            return w.getBalance();
+        }
+
+        return null;
     }
 
 
@@ -67,19 +73,28 @@ public class WalletService {
     {
         System.out.println("received Message: " +  bookingRequest);
         Integer balance = this.getWalletBalance(bookingRequest.getCustomerId());
-        if(balance >= bookingRequest.getPrice())
+        if(balance != null)
         {
-            deductBalance(bookingRequest.getCustomerId(), bookingRequest.getPrice());
-            Transaction transaction = new Transaction(bookingRequest.getCustomerId(), bookingRequest.getProviderId(), bookingRequest.getPrice(), "DEDUCT", bookingRequest.getBookingId());
-            transactionService.addTransaction(transaction);
-            CompletionRequest completionRequest = new CompletionRequest(bookingRequest.getBookingId());
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, "routing_key_completion", completionRequest);
+            if(balance >= bookingRequest.getPrice())
+                    {
+                        deductBalance(bookingRequest.getCustomerId(), bookingRequest.getPrice());
+                        Transaction transaction = new Transaction(bookingRequest.getCustomerId(), bookingRequest.getProviderId(), bookingRequest.getPrice(), "DEDUCT", bookingRequest.getBookingId());
+                        transactionService.addTransaction(transaction);
+                        CompletionRequest completionRequest = new CompletionRequest(bookingRequest.getBookingId());
+                        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, "routing_key_completion", completionRequest);
+                }
+                else
+                {
+                    RollbackRequest rollbackRequest = new RollbackRequest(bookingRequest.getBookingId());
+                    rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, "routing_key_rollback", rollbackRequest);
+                }
         }
         else
         {
             RollbackRequest rollbackRequest = new RollbackRequest(bookingRequest.getBookingId());
             rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, "routing_key_rollback", rollbackRequest);
         }
+        
     }
 
     // public Wallet findWalletByToken(String token, String SECRET_KEY)

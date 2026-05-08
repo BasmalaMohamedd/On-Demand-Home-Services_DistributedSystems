@@ -8,7 +8,9 @@ import org.springframework.stereotype.Service;
 
 import com.example.demo.config.RabbitMQConfig;
 import com.example.demo.dto.BookingRequest;
+import com.example.demo.dto.CompletionRequest;
 import com.example.demo.dto.NotificationRequest;
+import com.example.demo.dto.RollbackRequest;
 import com.example.demo.model.Booking;
 import com.example.demo.repo.BookingRepo;
 
@@ -85,18 +87,18 @@ public class BookingService {
     
 
     @RabbitListener(queues = RabbitMQConfig.BOOKING_COMPLETION_QUEUE)
-    public void compeleteBooking(Long bookingId)
+    public void compeleteBooking(CompletionRequest completionRequest)
     {
-        Booking booking = updateBookingStatus(bookingId, "CONFIRMED");
+        Booking booking = updateBookingStatus(completionRequest.getBookingId(), "CONFIRMED");
         notifyCustomer(booking.getCustomerId(), booking);
         notifyProvider(booking.getProviderId(), booking);
 
     }
 
     @RabbitListener(queues = RabbitMQConfig.ROLLBACK_QUEUE)
-    public void rejectBooking(Long bookingId)
+    public void rejectBooking(RollbackRequest rollbackRequest)
     {
-        Booking booking = updateBookingStatus(bookingId, "REJECTED");
+        Booking booking = updateBookingStatus(rollbackRequest.getBookingId(), "REJECTED");
         notifyCustomer(booking.getCustomerId(), booking);
 
     }
@@ -107,6 +109,7 @@ public class BookingService {
     }
 
     private void notifyCustomer(Long id, Booking booking){
+        System.out.println("ENTERED notifyCustomer");
         String msg = "Hello " +  booking.getCustomerUsername() + " your booking of id: " + booking.getId() + "is: ";
         if(booking.getStatus().equals("CONFIRMED"))
         {
@@ -117,23 +120,27 @@ public class BookingService {
             msg += "rejected, insufficient balance";
         }
 
+        System.out.println("SENDING TO NOTIFICATION QUEUE");
         NotificationRequest notificationRequest = new NotificationRequest(id, msg);
         rabbitTemplate.convertAndSend(
             RabbitMQConfig.EXCHANGE, 
             "routing_key_notification",
             notificationRequest
         );
+        System.out.println("SENT SUCCESSFULLY");
 
         
     }
     private void notifyProvider(Long id, Booking booking){
         String msg = "Hello Customer with name: " + booking.getCustomerUsername() + " has successfully confirmed booking your service with booking id " + booking.getId() + "!";
         NotificationRequest notificationRequest = new NotificationRequest(id, msg);
+        System.out.println("SENDING TO NOTIFICATION QUEUE");
          rabbitTemplate.convertAndSend(
             RabbitMQConfig.EXCHANGE, 
             "routing_key_notification",
             notificationRequest
         );
+        System.out.println("SENT SUCCESSFULLY");
 
     }
 
