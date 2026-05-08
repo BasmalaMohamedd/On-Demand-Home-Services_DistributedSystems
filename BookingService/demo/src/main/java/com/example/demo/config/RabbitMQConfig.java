@@ -18,6 +18,7 @@ public class RabbitMQConfig {
     public static final String WALLET_QUEUE = "wallet_queue";
     public static final String BOOKING_COMPLETION_QUEUE = "booking_completion_queue";
     public static final String ROLLBACK_QUEUE = "rollback_queue";
+    public static final String NOTIFICATION_QUEUE = "notification_queue";
     @Bean
     public DirectExchange bookingExchange(){
         return new DirectExchange(EXCHANGE);
@@ -40,6 +41,11 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue notificationQueue(){
+        return new Queue(NOTIFICATION_QUEUE, true);
+    }
+
+    @Bean
     public Binding walletBinding(Queue walletQueue, DirectExchange bookingExchange) {
         return BindingBuilder.bind(walletQueue).to(bookingExchange).with("routing_key_wallet");
     }
@@ -50,6 +56,11 @@ public class RabbitMQConfig {
     @Bean
     public Binding rollbackBinding(Queue rollbackQueue, DirectExchange bookingExchange) {
         return BindingBuilder.bind(rollbackQueue).to(bookingExchange).with("routing_key_rollback");
+    }
+
+    @Bean
+    public Binding notificationBinding(Queue notificationQueue, DirectExchange bookingExchange){
+        return BindingBuilder.bind(notificationQueue).to(bookingExchange).with("routing_key_notification");
     }
 
     @Bean
